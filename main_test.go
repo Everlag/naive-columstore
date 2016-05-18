@@ -40,6 +40,9 @@ func BenchmarkUint32Less(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		db.Prices.Less(120)
 	}
+
+	garbage = db
+
 }
 
 func BenchmarkUint32Delta(b *testing.B) {
@@ -49,6 +52,8 @@ func BenchmarkUint32Delta(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		db.Prices.Delta(120)
 	}
+
+	garbage = db
 }
 
 func BenchmarkUint32Sum(b *testing.B) {
@@ -56,6 +61,6 @@ func BenchmarkUint32Sum(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		trashUint64 = db.Prices.Sum()
+		trashUint64 += db.Prices.Sum()
 	}
 }
