@@ -191,6 +191,17 @@ func (c *UInt32Column) Push(values []uint32) {
 	c.latestBlock.Push(values)
 }
 
+// Determine the difference between a provided value
+// and each value in the column as {column} - {value}
+func (c *UInt32Column) Delta(value uint32) UInt32Column {
+	results := NewUInt32Column(c.BlockSize)
+	for _, b := range c.blocks {
+		results.Push(b.Delta(value))
+	}
+
+	return results
+}
+
 // Determine all values less than a provided value
 // and return them positionally as a BoolColumn
 func (c *UInt32Column) Less(value uint32) BoolColumn {
@@ -224,6 +235,15 @@ func (b *UInt32Block) Length() int {
 
 func (b *UInt32Block) Push(values []uint32) {
 	b.contents = append(b.contents, values...)
+}
+
+func (b *UInt32Block) Delta(value uint32) []uint32 {
+	results := make([]uint32, len(b.contents))
+	for i, v := range b.contents {
+		results[i] = v - value
+	}
+
+	return results
 }
 
 // Determine all values less than a provided value

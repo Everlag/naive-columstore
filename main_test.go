@@ -40,3 +40,12 @@ func BenchmarkUint32Less(b *testing.B) {
 		db.Prices.Less(120)
 	}
 }
+
+func BenchmarkUint32Delta(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		db.Prices.Delta(120)
+	}
+}
