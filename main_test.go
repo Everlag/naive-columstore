@@ -7,6 +7,7 @@ import (
 // Always save benchmark results here to
 // ensure the compiler doesn't optimize them away
 var garbage PriceDB
+var trashUint64 uint64
 
 func setupPriceBenchmark(b *testing.B) PriceDB {
 	db := NewPriceDB()
@@ -47,5 +48,14 @@ func BenchmarkUint32Delta(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		db.Prices.Delta(120)
+	}
+}
+
+func BenchmarkUint32Sum(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		trashUint64 = db.Prices.Sum()
 	}
 }

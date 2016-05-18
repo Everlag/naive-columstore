@@ -202,6 +202,16 @@ func (c *UInt32Column) Delta(value uint32) UInt32Column {
 	return results
 }
 
+// Sum all values in the column
+func (c *UInt32Column) Sum() uint64 {
+	var result uint64
+	for _, b := range c.blocks {
+		result = result + b.Sum()
+	}
+
+	return result
+}
+
 // Determine all values less than a provided value
 // and return them positionally as a BoolColumn
 func (c *UInt32Column) Less(value uint32) BoolColumn {
@@ -244,6 +254,15 @@ func (b *UInt32Block) Delta(value uint32) []uint32 {
 	}
 
 	return results
+}
+
+func (b *UInt32Block) Sum() uint64 {
+	var result uint64
+	for _, v := range b.contents {
+		result = result + uint64(v)
+	}
+
+	return result
 }
 
 // Determine all values less than a provided value
