@@ -95,6 +95,8 @@ func (db *PriceDB) Push(values []PriceTuple) {
 	db.Prices.Push(prices)
 }
 
+// A typically temporary column efficiently
+// storing boolean values
 type BoolColumn struct {
 	blocks []BoolBlock
 
@@ -126,6 +128,15 @@ func (c *BoolColumn) Push(values []bool) {
 	c.latestBlock.Push(values)
 }
 
+// Negate every value of the column and return it
+func (c *BoolColumn) Not() BoolColumn {
+	for _, b := range c.blocks {
+		b.Not()
+	}
+
+	return *c
+}
+
 type BoolBlock struct {
 	contents []bool
 }
@@ -140,6 +151,13 @@ func (b *BoolBlock) Length() int {
 
 func (b *BoolBlock) Push(values []bool) {
 	b.contents = append(b.contents, values...)
+}
+
+// Negate every value of the block
+func (b *BoolBlock) Not() {
+	for i, v := range b.contents {
+		b.contents[i] = !v
+	}
 }
 
 type UInt32Column struct {
@@ -173,6 +191,24 @@ func (c *UInt32Column) Push(values []uint32) {
 	c.latestBlock.Push(values)
 }
 
+// Determine all values less than a provided value
+// and return them positionally as a BoolColumn
+func (c *UInt32Column) Less(value uint32) BoolColumn {
+	results := NewBoolColumn(c.BlockSize)
+	for _, b := range c.blocks {
+		results.Push(b.Less(value))
+	}
+
+	return results
+}
+
+// Determine all values less than a provided value
+// and return them positionally as a BoolColumn
+func (c *UInt32Column) More(value uint32) BoolColumn {
+	less := c.Less(value)
+	return less.Not()
+}
+
 // A block of a UInt32Column
 type UInt32Block struct {
 	contents []uint32
@@ -188,6 +224,17 @@ func (b *UInt32Block) Length() int {
 
 func (b *UInt32Block) Push(values []uint32) {
 	b.contents = append(b.contents, values...)
+}
+
+// Determine all values less than a provided value
+// and return them positionally as a bool slice
+func (b *UInt32Block) Less(value uint32) []bool {
+	results := make([]bool, len(b.contents))
+	for i, v := range b.contents {
+		results[i] = v < value
+	}
+
+	return results
 }
 
 type FiniteString32Column struct {
@@ -250,6 +297,8 @@ func main() {
 	runtime.ReadMemStats(&stats)
 	fmt.Println(stats.Alloc/1024,
 		stats.Lookups, stats.Mallocs, stats.Frees)
+
+	fmt.Println(db.Prices.More(120).blocks[1])
 
 	// tuples, err := parseTuples("prices.csv")
 	// if err != nil {
