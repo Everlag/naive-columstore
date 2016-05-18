@@ -8,8 +8,7 @@ import (
 // ensure the compiler doesn't optimize them away
 var garbage PriceDB
 
-func BenchmarkUint32More(b *testing.B) {
-
+func setupPriceBenchmark(b *testing.B) PriceDB {
 	db := NewPriceDB()
 
 	err := db.IngestCSV("prices.csv")
@@ -18,6 +17,13 @@ func BenchmarkUint32More(b *testing.B) {
 	}
 
 	b.ReportAllocs()
+	return db
+}
+
+func BenchmarkUint32More(b *testing.B) {
+
+	db := setupPriceBenchmark(b)
+
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		db.Prices.More(120)
@@ -27,15 +33,8 @@ func BenchmarkUint32More(b *testing.B) {
 }
 
 func BenchmarkUint32Less(b *testing.B) {
+	db := setupPriceBenchmark(b)
 
-	db := NewPriceDB()
-
-	err := db.IngestCSV("prices.csv")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		db.Prices.Less(120)
