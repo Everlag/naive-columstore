@@ -33,8 +33,52 @@ type PriceDB struct {
 
 func NewPriceDB() PriceDB {
 	return PriceDB{
-		Names: NewFiniteString32Column(),
+		Names:  NewFiniteString32Column(),
+		Sets:   NewFiniteString32Column(),
+		Prices: NewUInt32Column(8192),
 	}
+}
+
+// Materialize all PriceTuples that are truthy from
+// the provided BoolColumn
+//
+// The assumption is that the provided BoolColumn is
+// the result of a predicate executed on this database.
+// As a result, we do no range checking.
+//
+// Passing a BoolColumn that was not created by this
+// database instance has no guarantees regarding safety.
+func (db *PriceDB) MaterializeFromBools(b BoolColumn) []PriceTuple {
+
+	// Grab all indices which this column is truthy
+	//
+	// This is efficient on selective queries but terrible
+	// against sparse queries where a list of FalseIndices
+	// would work better to blacklist against. Oh well.
+	positions := b.TruthyIndices()
+
+	// Keep columns separate for as long as possible
+	names := make([]string, len(positions))
+	sets := make([]string, len(positions))
+	prices := make([]uint32, len(positions))
+	for i, p := range positions {
+		names[i] = db.Names.Access(p)
+		sets[i] = db.Sets.Access(p)
+		prices[i] = db.Prices.Access(p)
+	}
+
+	// Stitch tuples back together into fancy structs
+	tuples := make([]PriceTuple, len(positions))
+	for i := range positions {
+		tuples[i] = PriceTuple{
+			Name:  names[i],
+			Set:   sets[i],
+			Price: prices[i],
+		}
+	}
+
+	return tuples
+
 }
 
 // Stream a CSV into the database
@@ -137,6 +181,26 @@ func (c *BoolColumn) Not() BoolColumn {
 	return *c
 }
 
+// Returns all indices for which this column
+// has truthy values
+func (b *BoolColumn) TruthyIndices() []int {
+
+	// Keep track of global offset to provide to
+	// blocks to allow them to return global indices rather
+	// than simply local
+	var offset int
+
+	values := make([]int, 0)
+	for _, b := range b.blocks {
+		values = append(values, b.TruthyIndices(offset)...)
+
+		// Set offset for next block to run against
+		offset = offset + b.Length()
+	}
+
+	return values
+}
+
 type BoolBlock struct {
 	contents []bool
 }
@@ -158,6 +222,21 @@ func (b *BoolBlock) Not() {
 	for i, v := range b.contents {
 		b.contents[i] = !v
 	}
+}
+
+// Returns all indices for which this block is truthy
+//
+// This requires providing the offset for which this block
+// sits, otherwise it is impossible to provide non-local indices
+func (b *BoolBlock) TruthyIndices(offset int) []int {
+	values := make([]int, 0)
+	for i, b := range b.contents {
+		if b {
+			values = append(values, i+offset)
+		}
+	}
+
+	return values
 }
 
 type UInt32Column struct {
@@ -189,6 +268,19 @@ func (c *UInt32Column) Push(values []uint32) {
 	}
 	// Add our values to the latest block
 	c.latestBlock.Push(values)
+}
+
+// Access the value stored at the named index
+//
+// This performs no range checking so an invalid
+// index will cause a panic. The caller is responsible
+// for ensuring index is within bounds
+func (c *UInt32Column) Access(index int) uint32 {
+	// Determine holding block
+	blockIndex := index / c.BlockSize
+	// and position within that block
+	innerIndex := index % c.BlockSize
+	return c.blocks[blockIndex].contents[innerIndex]
 }
 
 // Determine the difference between a provided value
@@ -316,6 +408,18 @@ func (c *FiniteString32Column) Push(values []string) {
 
 	// Push to underlying storage
 	c.contents.Push(translated)
+}
+
+// Access the value stored at the named index
+//
+// Provides some guarantees as Access method for the
+// columns underlying storage regarding panicking
+func (c *FiniteString32Column) Access(index int) string {
+	// Fetch compact representation
+	raw := c.contents.Access(index)
+
+	// Return the readable string
+	return c.inverter[raw]
 }
 
 type ColumnFlavor uint32

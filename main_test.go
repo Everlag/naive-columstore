@@ -4,63 +4,34 @@ import (
 	"testing"
 )
 
-// Always save benchmark results here to
-// ensure the compiler doesn't optimize them away
-var garbage PriceDB
-var trashUint64 uint64
-
-func setupPriceBenchmark(b *testing.B) PriceDB {
+func setupPriceTest(t *testing.T) PriceDB {
 	db := NewPriceDB()
 
 	err := db.IngestCSV("prices.csv")
 	if err != nil {
-		b.Fatal(err)
+		t.Fatal(err)
 	}
 
-	b.ReportAllocs()
 	return db
 }
 
-func BenchmarkUint32More(b *testing.B) {
+// Select all prices more than 1 000 000 cents = $10K and
+// rematerialize them into tuples
+func TestSimpleSelect(t *testing.T) {
+	db := setupPriceTest(t)
 
-	db := setupPriceBenchmark(b)
-
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		db.Prices.More(120)
+	// Find prices higher than our threshold
+	query := db.Prices.More(1000000)
+	tuples := db.MaterializeFromBools(query)
+	// Rough
+	if len(tuples) == 0 {
+		t.Fatal("bad query, none found")
 	}
-
-	garbage = db
-}
-
-func BenchmarkUint32Less(b *testing.B) {
-	db := setupPriceBenchmark(b)
-
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		db.Prices.Less(120)
+	if len(tuples) > 1000 {
+		t.Fatal("bad query, too many")
 	}
-
-	garbage = db
-
-}
-
-func BenchmarkUint32Delta(b *testing.B) {
-	db := setupPriceBenchmark(b)
-
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		db.Prices.Delta(120)
-	}
-
-	garbage = db
-}
-
-func BenchmarkUint32Sum(b *testing.B) {
-	db := setupPriceBenchmark(b)
-
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		trashUint64 += db.Prices.Sum()
+	// Exact
+	if len(tuples) != 54 {
+		t.Fatalf("bad query, %v found instead of 54", len(tuples))
 	}
 }
