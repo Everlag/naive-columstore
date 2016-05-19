@@ -138,7 +138,10 @@ func (c *BoolColumn) Not() BoolColumn {
 }
 
 type BoolBlock struct {
-	contents []bool
+	contents []uint64
+
+	// Number of slots filled
+	filled int
 }
 
 // Get current length for a block
@@ -146,17 +149,70 @@ type BoolBlock struct {
 // Direct access to contents is discouraged due to future
 // compression that may be applied
 func (b *BoolBlock) Length() int {
-	return len(b.contents)
+	return b.filled
 }
 
 func (b *BoolBlock) Push(values []bool) {
-	b.contents = append(b.contents, values...)
+
+	var slot uint64
+	if len(b.contents) > 0 {
+		// Find last slot to begin filling at
+		// if it exists
+		slot = b.contents[len(b.contents)-1]
+	}
+
+	// Determine number of empty slots available in
+	// last slot trivially
+	existingToFill := b.filled % 64
+	var compact uint64
+	for i := 0; i < existingToFill; i++ {
+
+		// Compact representation of byte-sized bools
+		compact = 0
+		if values[i] {
+			compact = 1
+		}
+		// OR in the digit we need then shift
+		// it over for the next value
+		slot = (slot | compact) << 1
+	}
+
+	// Replace contents of last slot with filled
+	// if we have anything to replace
+	if len(b.contents) > 0 {
+		b.contents[len(b.contents)-1] = slot
+	}
+
+	// Start at an offset of the values we've already packed
+	// to continue packing.
+	slot = 0
+	for i := existingToFill; i < len(b.contents); i++ {
+		// Compact representation of byte-sized bools
+		compact = 0
+		if values[i] {
+			compact = 1
+		}
+		// OR in the digit we need then shift
+		// it over for the next value
+		slot = (slot | compact) << 1
+
+		// Check if we need to push this value and
+		// add to the slot
+		if i > 0 && i%64 == 0 {
+			b.contents = append(b.contents, slot)
+			slot = 0
+		}
+	}
+
+	// Record number of slots filled
+	b.filled += len(values)
 }
 
 // Negate every value of the block
 func (b *BoolBlock) Not() {
 	for i, v := range b.contents {
-		b.contents[i] = !v
+		// Bitwise negation saves us 64 operations
+		b.contents[i] = ^v
 	}
 }
 
