@@ -67,6 +67,27 @@ func BenchmarkUint32Sum(b *testing.B) {
 	}
 }
 
+// AND two queries together
+//
+// This is an important operation as it allows
+// merging two predicates.
+func BenchmarkBoolAND(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	// Find prices higher and lower than our
+	// current threshold
+	lowerBound := db.Prices.More(100)
+	upperBound := db.Prices.Less(1000)
+	b.ResetTimer()
+
+	// Find prices higher than our threshold
+	for n := 0; n < b.N; n++ {
+
+		// Determine values between and materialize
+		garbageQuery = upperBound.AND(lowerBound)
+	}
+}
+
 // Select all prices more than 100 cents = $1
 func BenchmarkSelectAllMoreThanDollar(b *testing.B) {
 	db := setupPriceBenchmark(b)
