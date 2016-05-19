@@ -79,3 +79,24 @@ func BenchmarkSelectAllMoreThanDollar(b *testing.B) {
 		uselessTuples = db.MaterializeFromBools(query)
 	}
 }
+
+// Select all prices more than 100 cents = $1 and
+// less than 1000 cents = $10 then rematerialize them into tuples
+func BenchmarkSelectAllMoreDollarLessTen(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	b.ResetTimer()
+
+	// Find prices higher than our threshold
+	for n := 0; n < b.N; n++ {
+		// Find prices higher and lower than our
+		// current threshold
+		lowerBound := db.Prices.More(100)
+		upperBound := db.Prices.Less(1000)
+
+		// Determine values between and materialize
+		innerBound := upperBound.AND(lowerBound)
+
+		uselessTuples = db.MaterializeFromBools(innerBound)
+	}
+}

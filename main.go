@@ -181,6 +181,17 @@ func (c *BoolColumn) Not() BoolColumn {
 	return *c
 }
 
+// AND every value of this column and another column
+// that is assumed to be of equal length and organization
+// and overwrite this column
+func (c *BoolColumn) AND(other BoolColumn) BoolColumn {
+	for i, b := range c.blocks {
+		b.AND(other.blocks[i])
+	}
+
+	return *c
+}
+
 // Returns all indices for which this column
 // has truthy values
 func (b *BoolColumn) TruthyIndices() []int {
@@ -221,6 +232,15 @@ func (b *BoolBlock) Push(values []bool) {
 func (b *BoolBlock) Not() {
 	for i, v := range b.contents {
 		b.contents[i] = !v
+	}
+}
+
+// AND every value of this column and another column
+// that is assumed to be of equal length and organization
+// and return the result
+func (b *BoolBlock) AND(other BoolBlock) {
+	for i, v := range b.contents {
+		b.contents[i] = v && other.contents[i]
 	}
 }
 
