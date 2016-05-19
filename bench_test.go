@@ -8,6 +8,7 @@ import (
 // ensure the compiler doesn't optimize them away
 var garbage PriceDB
 var uselessTuples []PriceTuple
+var garbageQuery BoolColumn
 var trashUint64 uint64
 
 func setupPriceBenchmark(b *testing.B) PriceDB {
@@ -66,9 +67,21 @@ func BenchmarkUint32Sum(b *testing.B) {
 	}
 }
 
+// Select all prices more than 100 cents = $1
+func BenchmarkSelectAllMoreThanDollar(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	b.ResetTimer()
+
+	// Find prices higher than our threshold
+	for n := 0; n < b.N; n++ {
+		garbageQuery = db.Prices.More(100)
+	}
+}
+
 // Select all prices more than 100 cents = $1 and
 // rematerialize them into tuples
-func BenchmarkSelectAllMoreThanDollar(b *testing.B) {
+func BenchmarkSelectAllMoreThanDollarMaterial(b *testing.B) {
 	db := setupPriceBenchmark(b)
 
 	b.ResetTimer()
@@ -81,8 +94,27 @@ func BenchmarkSelectAllMoreThanDollar(b *testing.B) {
 }
 
 // Select all prices more than 100 cents = $1 and
-// less than 1000 cents = $10 then rematerialize them into tuples
+// less than 1000 cents = $10
 func BenchmarkSelectAllMoreDollarLessTen(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	b.ResetTimer()
+
+	// Find prices higher than our threshold
+	for n := 0; n < b.N; n++ {
+		// Find prices higher and lower than our
+		// current threshold
+		lowerBound := db.Prices.More(100)
+		upperBound := db.Prices.Less(1000)
+
+		// Determine values between and materialize
+		garbageQuery = upperBound.AND(lowerBound)
+	}
+}
+
+// Select all prices more than 100 cents = $1 and
+// less than 1000 cents = $10 then rematerialize them into tuples
+func BenchmarkSelectAllMoreDollarLessTenMaterial(b *testing.B) {
 	db := setupPriceBenchmark(b)
 
 	b.ResetTimer()
