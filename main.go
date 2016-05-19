@@ -306,6 +306,10 @@ func (c *FiniteString32Column) Push(values []string) {
 			// Increment translator counter
 			c.translatorCounter += 1
 			key = c.translatorCounter
+
+			// Add key to translator and inverter
+			c.translator[v] = key
+			c.inverter[key] = v
 		}
 		translated[i] = key
 	}
