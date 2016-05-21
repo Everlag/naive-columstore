@@ -451,6 +451,20 @@ func (c *TimeColumn) Access(index int) time.Time {
 	return time.Unix(0, nano)
 }
 
+// Determine all times happening after a certain point
+// and return them positionally as a BoolColumn
+func (c *TimeColumn) After(when time.Time) BoolColumn {
+	// Convert provided time to easy UnixNano
+	nano := when.UnixNano()
+
+	results := NewBoolColumn(c.BlockSize)
+	for _, b := range c.blocks {
+		results.Push(b.After(nano))
+	}
+
+	return results
+}
+
 // A block of a TimeColumn
 type TimeBlock struct {
 	contents []int64
@@ -466,6 +480,17 @@ func (b *TimeBlock) Length() int {
 
 func (b *TimeBlock) Push(values []int64) {
 	b.contents = append(b.contents, values...)
+}
+
+// Determine all values after a provided value
+// and return them positionally as a bool slice
+func (b *TimeBlock) After(value int64) []bool {
+	results := make([]bool, len(b.contents))
+	for i, v := range b.contents {
+		results[i] = v > value
+	}
+
+	return results
 }
 
 type FiniteString32Column struct {
