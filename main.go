@@ -10,6 +10,7 @@ import (
 	"encoding/csv"
 	"io"
 	"os"
+	"time"
 
 	"strconv"
 
@@ -483,7 +484,7 @@ type PriceTuple struct {
 	Name, Set string
 	Price     uint32
 
-	// Time
+	Time time.Time
 }
 
 // Convert a raw tuple to a price tuple
@@ -502,6 +503,12 @@ func (r RawTuple) ToPrice() (PriceTuple, error) {
 		return PriceTuple{}, fmt.Errorf("malformed price '%v'", err)
 	}
 	tuple.Price = uint32(price64)
+
+	when, err := time.Parse("2006-01-02 15:04:05", r[2])
+	if err != nil {
+		return PriceTuple{}, fmt.Errorf("malformed time '%v'", r[2])
+	}
+	tuple.Time = when
 
 	return tuple, nil
 }
