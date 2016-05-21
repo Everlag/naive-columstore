@@ -30,6 +30,8 @@ type PriceDB struct {
 	Sets  FiniteString32Column
 
 	Prices UInt32Column
+
+	Times TimeColumn
 }
 
 func NewPriceDB() PriceDB {
@@ -37,6 +39,7 @@ func NewPriceDB() PriceDB {
 		Names:  NewFiniteString32Column(),
 		Sets:   NewFiniteString32Column(),
 		Prices: NewUInt32Column(8192),
+		Times:  NewTimeColumn(8192),
 	}
 }
 
@@ -62,10 +65,12 @@ func (db *PriceDB) MaterializeFromBools(b BoolColumn) []PriceTuple {
 	names := make([]string, len(positions))
 	sets := make([]string, len(positions))
 	prices := make([]uint32, len(positions))
+	times := make([]time.Time, len(positions))
 	for i, p := range positions {
 		names[i] = db.Names.Access(p)
 		sets[i] = db.Sets.Access(p)
 		prices[i] = db.Prices.Access(p)
+		times[i] = db.Times.Access(p)
 	}
 
 	// Stitch tuples back together into fancy structs
@@ -75,6 +80,7 @@ func (db *PriceDB) MaterializeFromBools(b BoolColumn) []PriceTuple {
 			Name:  names[i],
 			Set:   sets[i],
 			Price: prices[i],
+			Time:  times[i],
 		}
 	}
 
@@ -130,14 +136,17 @@ func (db *PriceDB) Push(values []PriceTuple) {
 	names := make([]string, len(values))
 	sets := make([]string, len(values))
 	prices := make([]uint32, len(values))
+	times := make([]time.Time, len(values))
 	for i, p := range values {
 		names[i] = p.Name
 		sets[i] = p.Set
 		prices[i] = p.Price
+		times[i] = p.Time
 	}
 	db.Names.Push(names)
 	db.Sets.Push(sets)
 	db.Prices.Push(prices)
+	db.Times.Push(times)
 }
 
 // A typically temporary column efficiently
@@ -387,6 +396,76 @@ func (b *UInt32Block) Less(value uint32) []bool {
 	}
 
 	return results
+}
+
+type TimeColumn struct {
+	blocks []TimeBlock
+
+	latestBlock TimeBlock
+
+	BlockSize int
+}
+
+func NewTimeColumn(BlockSize int) TimeColumn {
+	return TimeColumn{
+		BlockSize: BlockSize,
+
+		blocks: make([]TimeBlock, 0),
+
+		latestBlock: TimeBlock{},
+	}
+}
+
+func (c *TimeColumn) Push(values []time.Time) {
+	// Check against block sizing
+	if c.latestBlock.Length()+len(values) > c.BlockSize {
+		// Lazily transfer full block to full storage
+		c.blocks = append(c.blocks, c.latestBlock)
+
+		// Grab a new block
+		c.latestBlock = TimeBlock{}
+	}
+
+	// Convert fat times to integers
+	nano := make([]int64, len(values))
+	for i, t := range values {
+		nano[i] = t.UnixNano()
+	}
+
+	// Add our values to the latest block
+	c.latestBlock.Push(nano)
+}
+
+// Access the value stored at the named index
+//
+// This performs no range checking so an invalid
+// index will cause a panic. The caller is responsible
+// for ensuring index is within bounds
+func (c *TimeColumn) Access(index int) time.Time {
+	// Determine holding block
+	blockIndex := index / c.BlockSize
+	// and position within that block
+	innerIndex := index % c.BlockSize
+	// Convert to friendlier type before returning
+	nano := c.blocks[blockIndex].contents[innerIndex]
+	return time.Unix(0, nano)
+}
+
+// A block of a TimeColumn
+type TimeBlock struct {
+	contents []int64
+}
+
+// Get current length for a block
+//
+// Direct access to contents is discouraged due to future
+// compression that may be applied
+func (b *TimeBlock) Length() int {
+	return len(b.contents)
+}
+
+func (b *TimeBlock) Push(values []int64) {
+	b.contents = append(b.contents, values...)
 }
 
 type FiniteString32Column struct {
