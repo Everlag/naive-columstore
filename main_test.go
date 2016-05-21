@@ -15,6 +15,36 @@ func setupPriceTest(t *testing.T) PriceDB {
 	return db
 }
 
+// Select all prices more than than 90 000 000 cents = $900K
+//
+// This should always return 0 results
+func TestPriceSelectNone(t *testing.T) {
+	db := setupPriceTest(t)
+
+	// Find prices higher than our threshold
+	query := db.Prices.More(9000000)
+	truthy := query.TruthyIndices()
+	// We should never have prices higher than our threshold
+	if len(truthy) != 0 {
+		t.Fatal("bad query, found tuples", db.MaterializeFromBools(query))
+	}
+}
+
+// Select all prices less than than 90 000 000 cents = $900K
+//
+// This should always return 0 results
+func TestPriceSelectAll(t *testing.T) {
+	db := setupPriceTest(t)
+
+	// Find prices higher than our threshold
+	query := db.Prices.Less(9000000)
+	truthy := query.TruthyIndices()
+	// We should never have prices higher than our threshold
+	if len(truthy) != 1000000 {
+		t.Fatalf("bad query, found %v tuples, expected 1000000", len(truthy))
+	}
+}
+
 // Select all prices more than 1 000 000 cents = $10K and
 // rematerialize them into tuples
 func TestSimpleSelect(t *testing.T) {
