@@ -2,6 +2,8 @@ package main
 
 import (
 	"testing"
+
+	"time"
 )
 
 var TestDB *PriceDB
@@ -100,4 +102,45 @@ func TestUpperLowerANDSelect(t *testing.T) {
 	if len(tuples) != 24 {
 		t.Fatalf("bad query, %v found instead of 24", len(tuples))
 	}
+}
+
+// Select all prices happening after 2015-11-13 15:07:12 - 1 day
+// that should cover all prices in the test dataset
+//
+// We have a million values in the dataset...
+func TestTimeAfterSelectAll(t *testing.T) {
+	db := setupPriceTest(t)
+
+	when, err := time.Parse("2006-01-02 15:04:05", "2015-11-13 15:07:12")
+	if err != nil {
+		t.Fatalf("failed to parse threshold '%v'", err)
+	}
+
+	when = when.Add(time.Hour * 24 * -1)
+	query := db.Times.After(when)
+	truthy := query.TruthyIndices()
+	if len(truthy) != 1000000 {
+		t.Fatalf("found %v tuples, not 1 million!", len(truthy))
+	}
+
+}
+
+// Select all prices happening after 2017-11-13 15:07:12 - 1 day
+// that should cover no prices in the test dataset
+//
+// We have a million values in the dataset...
+func TestTimeAfterSelectNone(t *testing.T) {
+	db := setupPriceTest(t)
+
+	when, err := time.Parse("2006-01-02 15:04:05", "2017-11-13 15:07:12")
+	if err != nil {
+		t.Fatalf("failed to parse threshold '%v'", err)
+	}
+
+	query := db.Times.After(when)
+	truthy := query.TruthyIndices()
+	if len(truthy) != 0 {
+		t.Fatalf("found %v tuples, not 0!", len(truthy))
+	}
+
 }

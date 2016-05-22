@@ -11,6 +11,8 @@ import (
 	"io"
 	"os"
 
+	"time"
+
 	"strconv"
 
 	"runtime"
@@ -29,6 +31,8 @@ type PriceDB struct {
 	Sets  FiniteString32Column
 
 	Prices UInt32Column
+
+	Times TimeColumn
 }
 
 func NewPriceDB() PriceDB {
@@ -36,6 +40,7 @@ func NewPriceDB() PriceDB {
 		Names:  NewFiniteString32Column(),
 		Sets:   NewFiniteString32Column(),
 		Prices: NewUInt32Column(8192),
+		Times:  NewTimeColumn(1),
 	}
 }
 
@@ -61,10 +66,12 @@ func (db *PriceDB) MaterializeFromBools(b BoolColumn) []PriceTuple {
 	names := make([]string, len(positions))
 	sets := make([]string, len(positions))
 	prices := make([]uint32, len(positions))
+	times := make([]time.Time, len(positions))
 	for i, p := range positions {
 		names[i] = db.Names.Access(p)
 		sets[i] = db.Sets.Access(p)
 		prices[i] = db.Prices.Access(p)
+		times[i] = db.Times.Access(p)
 	}
 
 	// Stitch tuples back together into fancy structs
@@ -74,6 +81,7 @@ func (db *PriceDB) MaterializeFromBools(b BoolColumn) []PriceTuple {
 			Name:  names[i],
 			Set:   sets[i],
 			Price: prices[i],
+			Time:  times[i],
 		}
 	}
 
@@ -129,14 +137,17 @@ func (db *PriceDB) Push(values []PriceTuple) {
 	names := make([]string, len(values))
 	sets := make([]string, len(values))
 	prices := make([]uint32, len(values))
+	times := make([]time.Time, len(values))
 	for i, p := range values {
 		names[i] = p.Name
 		sets[i] = p.Set
 		prices[i] = p.Price
+		times[i] = p.Time
 	}
 	db.Names.Push(names)
 	db.Sets.Push(sets)
 	db.Prices.Push(prices)
+	db.Times.Push(times)
 }
 
 // A typically temporary column efficiently
@@ -299,6 +310,40 @@ func (c *UInt32Column) More(value uint32) BoolColumn {
 	return less.Not()
 }
 
+type TimeColumn struct {
+	contents []time.Time
+}
+
+func NewTimeColumn(BlockSize int) TimeColumn {
+	return TimeColumn{
+		contents: make([]time.Time, 0),
+	}
+}
+
+func (c *TimeColumn) Push(values []time.Time) {
+	c.contents = append(c.contents, values...)
+}
+
+// Access the value stored at the named index
+//
+// This performs no range checking so an invalid
+// index will cause a panic. The caller is responsible
+// for ensuring index is within bounds
+func (c *TimeColumn) Access(index int) time.Time {
+	return c.contents[index]
+}
+
+// Determine all times happening after a certain point
+// and return them positionally as a BoolColumn
+func (c *TimeColumn) After(when time.Time) BoolColumn {
+	results := NewBoolColumn(1)
+	for _, v := range c.contents {
+		results.Push([]bool{v.After(when)})
+	}
+
+	return results
+}
+
 type FiniteString32Column struct {
 	// Underlying storage exploits all properties of ints
 	contents UInt32Column
@@ -392,7 +437,7 @@ type PriceTuple struct {
 	Name, Set string
 	Price     uint32
 
-	// Time
+	Time time.Time
 }
 
 // Convert a raw tuple to a price tuple
@@ -411,6 +456,12 @@ func (r RawTuple) ToPrice() (PriceTuple, error) {
 		return PriceTuple{}, fmt.Errorf("malformed price '%v'", err)
 	}
 	tuple.Price = uint32(price64)
+
+	when, err := time.Parse("2006-01-02 15:04:05", r[2])
+	if err != nil {
+		return PriceTuple{}, fmt.Errorf("malformed time '%v'", r[2])
+	}
+	tuple.Time = when
 
 	return tuple, nil
 }
