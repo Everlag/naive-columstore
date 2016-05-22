@@ -239,3 +239,45 @@ func TestTimeAfterSelecAfterTimeWiseMidPoint(t *testing.T) {
 	}
 
 }
+
+// Select a single price for a card-set combination
+// which is the latest price.
+//
+// Postgres equivalent
+// SELECT name, set, time, price FROM prices.mtgprice
+// 	WHERE name='Griselbrand' AND set='Avacyn Restored Foil'
+// 	ORDER BY time DESC LIMIT 1;
+func TestLatestPrice(t *testing.T) {
+
+	testTupleTime, err := time.Parse("2006-01-02 15:04:05",
+		"2016-04-09 03:51:45")
+	if err != nil {
+		t.Fatalf("failed to parse time, %v", err)
+	}
+
+	testTuple := PriceTuple{
+		Name:  "Griselbrand",
+		Set:   "Avacyn Restored Foil",
+		Price: 5523,
+		Time:  testTupleTime,
+	}
+
+	db := setupPriceTest(t)
+
+	nameEq := db.Names.Equal(testTuple.Name)
+	setEq := db.Sets.Equal(testTuple.Set)
+	innerBound := nameEq.AND(setEq)
+
+	tuples := db.MaterializeTimeSortAsc(innerBound)
+	// We only want one but have no way of ensuring we only
+	// get one, so we have to handle that
+	if len(tuples) < 1 {
+		t.Fatalf("found fewer than two tuples")
+	}
+
+	found := tuples[len(tuples)-1]
+	if found != testTuple {
+		t.Fatalf("found tuple not equal to expected result, got %v", found)
+	}
+
+}

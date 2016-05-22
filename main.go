@@ -13,6 +13,8 @@ import (
 
 	"time"
 
+	"sort"
+
 	"strconv"
 
 	"runtime"
@@ -84,6 +86,20 @@ func (db *PriceDB) MaterializeFromBools(b BoolColumn) []PriceTuple {
 			Time:  times[i],
 		}
 	}
+
+	return tuples
+
+}
+
+// Materialize all PriceTuples that are truthy from the provided
+// BoolColumn then sort them in descending order of time.
+func (db *PriceDB) MaterializeTimeSortAsc(b BoolColumn) []PriceTuple {
+
+	// Materialize
+	tuples := db.MaterializeFromBools(b)
+
+	// Sort by time
+	sort.Sort(TimeOrderedTuples(tuples))
 
 	return tuples
 
@@ -241,4 +257,16 @@ func parseTuples(file string) ([]RawTuple, error) {
 	}
 
 	return tuples, nil
+}
+
+type TimeOrderedTuples []PriceTuple
+
+func (a TimeOrderedTuples) Len() int {
+	return len(a)
+}
+func (a TimeOrderedTuples) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+func (a TimeOrderedTuples) Less(i, j int) bool {
+	return a[i].Time.Before(a[j].Time)
 }
