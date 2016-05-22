@@ -53,3 +53,14 @@ func (c *FiniteString32Column) Access(index int) string {
 	// Return the readable string
 	return c.inverter[raw]
 }
+
+// Determine all values equal a provided value
+// and return them positionally as a BoolColumn
+func (c *FiniteString32Column) Equal(value string) BoolColumn {
+
+	// Translate the string into something
+	// our underlying storage can handle
+	translated := c.translator[value]
+
+	return c.contents.Equal(translated)
+}

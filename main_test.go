@@ -85,6 +85,30 @@ func TestUint32Equal(t *testing.T) {
 	}
 }
 
+// Select all names equal to 'Griselbrand' and rematerialize
+// them into tuples
+//
+// Postgres equivalent
+//  elect count(*) from prices.mtgprice where name = 'Griselbrand';
+func TestFiniteString32Equal(t *testing.T) {
+	db := setupPriceTest(t)
+
+	// Find prices higher than our threshold
+	query := db.Names.Equal("Griselbrand")
+	tuples := db.MaterializeFromBools(query)
+	// Rough
+	if len(tuples) == 0 {
+		t.Fatal("bad query, none found")
+	}
+	if len(tuples) > 1000 {
+		t.Fatal("bad query, too many")
+	}
+	// Exact
+	if len(tuples) != 75 {
+		t.Fatalf("bad query, %v found instead of 22", len(tuples))
+	}
+}
+
 // Select all prices more than 1 000 000 cents = $10K and
 // rematerialize them into tuples
 //
