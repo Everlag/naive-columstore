@@ -4,13 +4,21 @@ import (
 	"testing"
 )
 
+var TestDB *PriceDB
+
 func setupPriceTest(t *testing.T) PriceDB {
+	if TestDB != nil {
+		return *TestDB
+	}
+
 	db := NewPriceDB()
 
 	err := db.IngestCSV("prices.csv")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	TestDB = &db
 
 	return db
 }
