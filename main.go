@@ -142,40 +142,23 @@ func (db *PriceDB) Push(values []PriceTuple) {
 // A typically temporary column efficiently
 // storing boolean values
 type BoolColumn struct {
-	blocks []BoolBlock
-
-	latestBlock BoolBlock
-
-	BlockSize int
+	contents []bool
 }
 
 func NewBoolColumn(BlockSize int) BoolColumn {
 	return BoolColumn{
-		BlockSize: BlockSize,
-
-		blocks: make([]BoolBlock, 0),
-
-		latestBlock: BoolBlock{},
+		contents: make([]bool, 0),
 	}
 }
 
 func (c *BoolColumn) Push(values []bool) {
-	// Check against block sizing
-	if c.latestBlock.Length()+len(values) > c.BlockSize {
-		// Lazily transfer full block to full storage
-		c.blocks = append(c.blocks, c.latestBlock)
-
-		// Grab a new block
-		c.latestBlock = BoolBlock{}
-	}
-	// Add our values to the latest block
-	c.latestBlock.Push(values)
+	c.contents = append(c.contents, values...)
 }
 
 // Negate every value of the column and return it
 func (c *BoolColumn) Not() BoolColumn {
-	for _, b := range c.blocks {
-		b.Not()
+	for i, v := range c.contents {
+		c.contents[i] = !v
 	}
 
 	return *c
@@ -185,8 +168,8 @@ func (c *BoolColumn) Not() BoolColumn {
 // that is assumed to be of equal length and organization
 // and overwrite this column
 func (c *BoolColumn) AND(other BoolColumn) BoolColumn {
-	for i, b := range c.blocks {
-		b.AND(other.blocks[i])
+	for i, v := range c.contents {
+		c.contents[i] = v && other.contents[i]
 	}
 
 	return *c
@@ -194,22 +177,16 @@ func (c *BoolColumn) AND(other BoolColumn) BoolColumn {
 
 // Returns all indices for which this column
 // has truthy values
-func (b *BoolColumn) TruthyIndices() []int {
+func (c *BoolColumn) TruthyIndices() []int {
 
-	// Keep track of global offset to provide to
-	// blocks to allow them to return global indices rather
-	// than simply local
-	var offset int
-
-	values := make([]int, 0)
-	for _, b := range b.blocks {
-		values = append(values, b.TruthyIndices(offset)...)
-
-		// Set offset for next block to run against
-		offset = offset + b.Length()
+	indices := make([]int, 0)
+	for i, v := range c.contents {
+		if v {
+			indices = append(indices, i)
+		}
 	}
 
-	return values
+	return indices
 }
 
 type BoolBlock struct {
@@ -260,34 +237,17 @@ func (b *BoolBlock) TruthyIndices(offset int) []int {
 }
 
 type UInt32Column struct {
-	blocks []UInt32Block
-
-	latestBlock UInt32Block
-
-	BlockSize int
+	contents []uint32
 }
 
 func NewUInt32Column(BlockSize int) UInt32Column {
 	return UInt32Column{
-		BlockSize: BlockSize,
-
-		blocks: make([]UInt32Block, 0),
-
-		latestBlock: UInt32Block{},
+		contents: make([]uint32, 0),
 	}
 }
 
 func (c *UInt32Column) Push(values []uint32) {
-	// Check against block sizing
-	if c.latestBlock.Length()+len(values) > c.BlockSize {
-		// Lazily transfer full block to full storage
-		c.blocks = append(c.blocks, c.latestBlock)
-
-		// Grab a new block
-		c.latestBlock = UInt32Block{}
-	}
-	// Add our values to the latest block
-	c.latestBlock.Push(values)
+	c.contents = append(c.contents, values...)
 }
 
 // Access the value stored at the named index
@@ -296,19 +256,16 @@ func (c *UInt32Column) Push(values []uint32) {
 // index will cause a panic. The caller is responsible
 // for ensuring index is within bounds
 func (c *UInt32Column) Access(index int) uint32 {
-	// Determine holding block
-	blockIndex := index / c.BlockSize
-	// and position within that block
-	innerIndex := index % c.BlockSize
-	return c.blocks[blockIndex].contents[innerIndex]
+	return c.contents[index]
 }
 
 // Determine the difference between a provided value
 // and each value in the column as {column} - {value}
 func (c *UInt32Column) Delta(value uint32) UInt32Column {
-	results := NewUInt32Column(c.BlockSize)
-	for _, b := range c.blocks {
-		results.Push(b.Delta(value))
+	results := NewUInt32Column(1)
+
+	for _, v := range c.contents {
+		results.Push([]uint32{v - value})
 	}
 
 	return results
@@ -317,8 +274,8 @@ func (c *UInt32Column) Delta(value uint32) UInt32Column {
 // Sum all values in the column
 func (c *UInt32Column) Sum() uint64 {
 	var result uint64
-	for _, b := range c.blocks {
-		result = result + b.Sum()
+	for _, v := range c.contents {
+		result = result + uint64(v)
 	}
 
 	return result
@@ -327,9 +284,9 @@ func (c *UInt32Column) Sum() uint64 {
 // Determine all values less than a provided value
 // and return them positionally as a BoolColumn
 func (c *UInt32Column) Less(value uint32) BoolColumn {
-	results := NewBoolColumn(c.BlockSize)
-	for _, b := range c.blocks {
-		results.Push(b.Less(value))
+	results := NewBoolColumn(1000)
+	for _, v := range c.contents {
+		results.Push([]bool{v < value})
 	}
 
 	return results
@@ -340,52 +297,6 @@ func (c *UInt32Column) Less(value uint32) BoolColumn {
 func (c *UInt32Column) More(value uint32) BoolColumn {
 	less := c.Less(value)
 	return less.Not()
-}
-
-// A block of a UInt32Column
-type UInt32Block struct {
-	contents []uint32
-}
-
-// Get current length for a block
-//
-// Direct access to contents is discouraged due to future
-// compression that may be applied
-func (b *UInt32Block) Length() int {
-	return len(b.contents)
-}
-
-func (b *UInt32Block) Push(values []uint32) {
-	b.contents = append(b.contents, values...)
-}
-
-func (b *UInt32Block) Delta(value uint32) []uint32 {
-	results := make([]uint32, len(b.contents))
-	for i, v := range b.contents {
-		results[i] = v - value
-	}
-
-	return results
-}
-
-func (b *UInt32Block) Sum() uint64 {
-	var result uint64
-	for _, v := range b.contents {
-		result = result + uint64(v)
-	}
-
-	return result
-}
-
-// Determine all values less than a provided value
-// and return them positionally as a bool slice
-func (b *UInt32Block) Less(value uint32) []bool {
-	results := make([]bool, len(b.contents))
-	for i, v := range b.contents {
-		results[i] = v < value
-	}
-
-	return results
 }
 
 type FiniteString32Column struct {
@@ -464,8 +375,6 @@ func main() {
 	runtime.ReadMemStats(&stats)
 	fmt.Println(stats.Alloc/1024,
 		stats.Lookups, stats.Mallocs, stats.Frees)
-
-	fmt.Println(db.Prices.More(120).blocks[1])
 
 	// tuples, err := parseTuples("prices.csv")
 	// if err != nil {
