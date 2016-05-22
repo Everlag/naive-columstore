@@ -179,3 +179,46 @@ func BenchmarkSelectAfterTimeWiseMidPoint(b *testing.B) {
 
 	}
 }
+
+// Select all prices for a specific card/set combo
+//
+// This requires materialization as sort is currently
+// only implemented on tuples rather than on columns.
+func BenchmarkLatestPriceMaterial(b *testing.B) {
+
+	testTupleTime, err := time.Parse("2006-01-02 15:04:05",
+		"2016-04-09 03:51:45")
+	if err != nil {
+		b.Fatalf("failed to parse time, %v", err)
+	}
+
+	testTuple := PriceTuple{
+		Name:  "Griselbrand",
+		Set:   "Avacyn Restored Foil",
+		Price: 5523,
+		Time:  testTupleTime,
+	}
+
+	db := setupPriceBenchmark(b)
+
+	b.ResetTimer()
+
+	// Find prices higher than our threshold
+	for n := 0; n < b.N; n++ {
+
+		nameEq := db.Names.Equal(testTuple.Name)
+		setEq := db.Sets.Equal(testTuple.Set)
+		innerBound := nameEq.AND(setEq)
+
+		tuples := db.MaterializeTimeSortAsc(innerBound)
+		// We only want one but have no way of ensuring we only
+		// get one, so we have to handle that
+		if len(tuples) < 1 {
+			b.Fatalf("found fewer than two tuples")
+		}
+
+		uselessTuples = []PriceTuple{tuples[len(tuples)-1]}
+
+	}
+
+}
