@@ -2,6 +2,8 @@ package main
 
 import (
 	"testing"
+
+	"time"
 )
 
 // Always save benchmark results here to
@@ -151,5 +153,24 @@ func BenchmarkSelectAllMoreDollarLessTenMaterial(b *testing.B) {
 		innerBound := upperBound.AND(lowerBound)
 
 		uselessTuples = db.MaterializeFromBools(innerBound)
+	}
+}
+
+// Select all prices after the time of the 500000th price
+func BenchmarkSelectAfterTimeWiseMidPoint(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	when, err := time.Parse("2006-01-02 15:04:05", "2015-11-24 20:39:29")
+	if err != nil {
+		b.Fatalf("failed to parse threshold '%v'", err)
+	}
+
+	b.ResetTimer()
+
+	// Find prices higher than our threshold
+	for n := 0; n < b.N; n++ {
+
+		garbageQuery = db.Times.After(when)
+
 	}
 }

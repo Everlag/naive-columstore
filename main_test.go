@@ -144,3 +144,20 @@ func TestTimeAfterSelectNone(t *testing.T) {
 	}
 
 }
+
+// Select all prices happening after the middle tuple at ~2015-11-24
+func TestTimeAfterSelecAfterTimeWiseMidPoint(t *testing.T) {
+	db := setupPriceTest(t)
+
+	when, err := time.Parse("2006-01-02 15:04:05", "2015-11-24 20:39:29")
+	if err != nil {
+		t.Fatalf("failed to parse threshold '%v'", err)
+	}
+
+	query := db.Times.After(when)
+	truthy := query.TruthyIndices()
+	if len(truthy) != 491318 {
+		t.Fatalf("found %v tuples, not 0!", len(truthy))
+	}
+
+}
