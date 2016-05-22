@@ -39,8 +39,8 @@ func NewPriceDB() PriceDB {
 	return PriceDB{
 		Names:  NewFiniteString32Column(),
 		Sets:   NewFiniteString32Column(),
-		Prices: NewUInt32Column(8192),
-		Times:  NewTimeColumn(1),
+		Prices: NewUInt32Column(),
+		Times:  NewTimeColumn(),
 	}
 }
 
@@ -156,7 +156,7 @@ type BoolColumn struct {
 	contents []bool
 }
 
-func NewBoolColumn(BlockSize int) BoolColumn {
+func NewBoolColumn() BoolColumn {
 	return BoolColumn{
 		contents: make([]bool, 0),
 	}
@@ -200,58 +200,11 @@ func (c *BoolColumn) TruthyIndices() []int {
 	return indices
 }
 
-type BoolBlock struct {
-	contents []bool
-}
-
-// Get current length for a block
-//
-// Direct access to contents is discouraged due to future
-// compression that may be applied
-func (b *BoolBlock) Length() int {
-	return len(b.contents)
-}
-
-func (b *BoolBlock) Push(values []bool) {
-	b.contents = append(b.contents, values...)
-}
-
-// Negate every value of the block
-func (b *BoolBlock) Not() {
-	for i, v := range b.contents {
-		b.contents[i] = !v
-	}
-}
-
-// AND every value of this column and another column
-// that is assumed to be of equal length and organization
-// and return the result
-func (b *BoolBlock) AND(other BoolBlock) {
-	for i, v := range b.contents {
-		b.contents[i] = v && other.contents[i]
-	}
-}
-
-// Returns all indices for which this block is truthy
-//
-// This requires providing the offset for which this block
-// sits, otherwise it is impossible to provide non-local indices
-func (b *BoolBlock) TruthyIndices(offset int) []int {
-	values := make([]int, 0)
-	for i, b := range b.contents {
-		if b {
-			values = append(values, i+offset)
-		}
-	}
-
-	return values
-}
-
 type UInt32Column struct {
 	contents []uint32
 }
 
-func NewUInt32Column(BlockSize int) UInt32Column {
+func NewUInt32Column() UInt32Column {
 	return UInt32Column{
 		contents: make([]uint32, 0),
 	}
@@ -273,7 +226,7 @@ func (c *UInt32Column) Access(index int) uint32 {
 // Determine the difference between a provided value
 // and each value in the column as {column} - {value}
 func (c *UInt32Column) Delta(value uint32) UInt32Column {
-	results := NewUInt32Column(1)
+	results := NewUInt32Column()
 
 	for _, v := range c.contents {
 		results.Push([]uint32{v - value})
@@ -295,7 +248,7 @@ func (c *UInt32Column) Sum() uint64 {
 // Determine all values less than a provided value
 // and return them positionally as a BoolColumn
 func (c *UInt32Column) Less(value uint32) BoolColumn {
-	results := NewBoolColumn(1000)
+	results := NewBoolColumn()
 	for _, v := range c.contents {
 		results.Push([]bool{v < value})
 	}
@@ -314,7 +267,7 @@ type TimeColumn struct {
 	contents []time.Time
 }
 
-func NewTimeColumn(BlockSize int) TimeColumn {
+func NewTimeColumn() TimeColumn {
 	return TimeColumn{
 		contents: make([]time.Time, 0),
 	}
@@ -336,7 +289,7 @@ func (c *TimeColumn) Access(index int) time.Time {
 // Determine all times happening after a certain point
 // and return them positionally as a BoolColumn
 func (c *TimeColumn) After(when time.Time) BoolColumn {
-	results := NewBoolColumn(1)
+	results := NewBoolColumn()
 	for _, v := range c.contents {
 		results.Push([]bool{v.After(when)})
 	}
@@ -357,7 +310,7 @@ type FiniteString32Column struct {
 
 func NewFiniteString32Column() FiniteString32Column {
 	return FiniteString32Column{
-		contents: NewUInt32Column(8192),
+		contents: NewUInt32Column(),
 
 		translator:        make(map[string]uint32),
 		inverter:          make(map[uint32]string),
