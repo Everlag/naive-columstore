@@ -13,7 +13,12 @@ var uselessTuples []PriceTuple
 var garbageQuery BoolColumn
 var trashUint64 uint64
 
+var BenchDB *PriceDB
+
 func setupPriceBenchmark(b *testing.B) PriceDB {
+	if BenchDB != nil {
+		return *BenchDB
+	}
 	db := NewPriceDB()
 
 	err := db.IngestCSV("prices.csv")
