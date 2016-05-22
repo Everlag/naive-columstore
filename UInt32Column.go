@@ -62,3 +62,14 @@ func (c *UInt32Column) More(value uint32) BoolColumn {
 	less := c.Less(value)
 	return less.Not()
 }
+
+// Determine all values equal a provided value
+// and return them positionally as a BoolColumn
+func (c *UInt32Column) Equal(value uint32) BoolColumn {
+	results := NewBoolColumn()
+	for _, v := range c.contents {
+		results.Push([]bool{v == value})
+	}
+
+	return results
+}
