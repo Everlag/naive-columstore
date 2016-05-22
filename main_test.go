@@ -28,6 +28,9 @@ func setupPriceTest(t *testing.T) PriceDB {
 // Select all prices more than than 90 000 000 cents = $900K
 //
 // This should always return 0 results
+// 
+// Postgres equivalent
+//  select count(*) from prices.mtgprice where price > 9000000;
 func TestPriceSelectNone(t *testing.T) {
 	db := setupPriceTest(t)
 
@@ -42,7 +45,10 @@ func TestPriceSelectNone(t *testing.T) {
 
 // Select all prices less than than 90 000 000 cents = $900K
 //
-// This should always return 0 results
+// This should always return 1000000 results
+// 
+// Postgres equivalent
+//  select count(*) from prices.mtgprice where price < 9000000;
 func TestPriceSelectAll(t *testing.T) {
 	db := setupPriceTest(t)
 
@@ -57,6 +63,9 @@ func TestPriceSelectAll(t *testing.T) {
 
 // Select all prices more than 1 000 000 cents = $10K and
 // rematerialize them into tuples
+// 
+// Postgres equivalent
+//  select count(*) from prices.mtgprice where price > 1000000;
 func TestSimpleSelect(t *testing.T) {
 	db := setupPriceTest(t)
 
@@ -77,8 +86,11 @@ func TestSimpleSelect(t *testing.T) {
 }
 
 // Select all prices more than 1 000 000 cents = $10K and
-// less than our upper threshold of #11K then
+// less than our upper threshold of $11K then
 // rematerialize them into tuples
+// 
+// Postgres equivalent
+//  select count(*) from prices.mtgprice where price > 1000000 and price < 1100000;
 func TestUpperLowerANDSelect(t *testing.T) {
 	db := setupPriceTest(t)
 
@@ -108,6 +120,12 @@ func TestUpperLowerANDSelect(t *testing.T) {
 // that should cover all prices in the test dataset
 //
 // We have a million values in the dataset...
+// 
+// Postgres equivalent
+// with threshold as
+// 	(select to_timestamp('2015-10-13 15:07:12', 'YYYY-MM-DD-HH24-MI-SS'))
+// 	select count(*) from prices.mtgprice where
+// 		time > (select * from threshold);
 func TestTimeAfterSelectAll(t *testing.T) {
 	db := setupPriceTest(t)
 
@@ -129,6 +147,12 @@ func TestTimeAfterSelectAll(t *testing.T) {
 // that should cover no prices in the test dataset
 //
 // We have a million values in the dataset...
+// 
+// Postgres equivalent
+// with threshold as
+// 	(select to_timestamp('2015-10-13 15:07:12', 'YYYY-MM-DD-HH24-MI-SS'))
+// 	select count(*) from prices.mtgprice where
+// 		time < (select * from threshold);
 func TestTimeAfterSelectNone(t *testing.T) {
 	db := setupPriceTest(t)
 
@@ -146,6 +170,12 @@ func TestTimeAfterSelectNone(t *testing.T) {
 }
 
 // Select all prices happening after the middle tuple at ~2015-11-24
+// 
+// Postgres equivalent
+// with threshold as
+// 	(select to_timestamp('2015-11-24 20:39:29', 'YYYY-MM-DD-HH24-MI-SS'))
+// 	select count(*) from prices.mtgprice where
+// 		time > (select * from threshold);
 func TestTimeAfterSelecAfterTimeWiseMidPoint(t *testing.T) {
 	db := setupPriceTest(t)
 
