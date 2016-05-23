@@ -107,6 +107,23 @@ func BenchmarkSelectAllMoreThanDollar(b *testing.B) {
 	}
 }
 
+// Select all names equal to 'Griselbrand' or 'Avacyn, Angel of Hope'
+func BenchmarkFiniteString32Within(b *testing.B) {
+	db := setupPriceBenchmark(b)
+
+	names := []string{
+		"Griselbrand",
+		"Avacyn, Angel of Hope",
+	}
+
+	b.ResetTimer()
+
+	// Find prices higher than our threshold
+	for n := 0; n < b.N; n++ {
+		garbageQuery = db.Names.Within(names)
+	}
+}
+
 // Select all prices more than 100 cents = $1 and
 // rematerialize them into tuples
 func BenchmarkSelectAllMoreThanDollarMaterial(b *testing.B) {

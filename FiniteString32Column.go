@@ -64,3 +64,26 @@ func (c *FiniteString32Column) Equal(value string) BoolColumn {
 
 	return c.contents.Equal(translated)
 }
+
+// Determine all values equal to a member of the provided values
+// and return them positionally as a BoolColumn
+//
+// Cannot handle empty slices, for single values call Equal instead
+func (c *FiniteString32Column) Within(values []string) BoolColumn {
+
+	var query *BoolColumn
+	for _, v := range values {
+		// Translate the string into something
+		// our underlying storage can handle
+		translated := c.translator[v]
+		result := c.contents.Equal(translated)
+		if query == nil {
+			query = &result
+		} else {
+			result = query.OR(result)
+			query = &result
+		}
+	}
+
+	return *query
+}

@@ -89,7 +89,7 @@ func TestUint32Equal(t *testing.T) {
 // them into tuples
 //
 // Postgres equivalent
-//  elect count(*) from prices.mtgprice where name = 'Griselbrand';
+//  select count(*) from prices.mtgprice where name = 'Griselbrand';
 func TestFiniteString32Equal(t *testing.T) {
 	db := setupPriceTest(t)
 
@@ -106,6 +106,33 @@ func TestFiniteString32Equal(t *testing.T) {
 	// Exact
 	if len(tuples) != 75 {
 		t.Fatalf("bad query, %v found instead of 22", len(tuples))
+	}
+}
+
+// Select all names equal to 'Griselbrand' or 'Avacyn, Angel of Hope'
+// and rematerialize them into tuples
+//
+// Postgres equivalent
+// select count(*) from prices.mtgprice where
+// 	name = 'Griselbrand' or name = 'Avacyn, Angel of Hope';
+func TestFiniteString32Within(t *testing.T) {
+	db := setupPriceTest(t)
+
+	names := []string{
+		"Griselbrand",
+		"Avacyn, Angel of Hope",
+	}
+
+	// Find prices higher than our threshold
+	query := db.Names.Within(names)
+	tuples := db.MaterializeFromBools(query)
+	// Rough
+	if len(tuples) == 0 {
+		t.Fatal("bad query, none found")
+	}
+	// Exact
+	if len(tuples) != 125 {
+		t.Fatalf("bad query, %v found instead of 125", len(tuples))
 	}
 }
 
