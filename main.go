@@ -42,7 +42,7 @@ func NewPriceDB() PriceDB {
 		Names:  NewFiniteString32Column(),
 		Sets:   NewFiniteString32Column(),
 		Prices: NewUInt32Column(),
-		Times:  NewTimeColumn(),
+		Times:  NewTimeColumn(1000000),
 	}
 }
 
