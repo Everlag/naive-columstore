@@ -164,6 +164,34 @@ func TestUpperLowerANDSelect(t *testing.T) {
 	}
 }
 
+// Select all prices less than 1 000 000 cents = $10K or
+// less than our upper threshold of $11K then
+// rematerialize them into tuples
+//
+// Postgres equivalent
+//  select count(*) from prices.mtgprice where price > 1000000 or price > 1100000;
+func TestUpperLowerORSelect(t *testing.T) {
+	db := setupPriceTest(t)
+
+	// Find prices higher and lower than our
+	// current threshold
+	lowerBound := db.Prices.More(1000000)
+	upperBound := db.Prices.More(1100000)
+
+	// Determine values between and materialize
+	innerBound := upperBound.OR(lowerBound)
+
+	tuples := db.MaterializeFromBools(innerBound)
+	// Rough
+	if len(tuples) == 0 {
+		t.Fatal("bad query, none found")
+	}
+	// Exact
+	if len(tuples) != 54 {
+		t.Fatalf("bad query, %v found instead of 54", len(tuples))
+	}
+}
+
 // Select all prices happening after 2015-11-13 15:07:12 - 1 day
 // that should cover all prices in the test dataset
 //

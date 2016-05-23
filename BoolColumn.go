@@ -36,6 +36,17 @@ func (c *BoolColumn) AND(other BoolColumn) BoolColumn {
 	return *c
 }
 
+// OR every value of this column and another column
+// that is assumed to be of equal length and organization
+// and overwrite this column
+func (c *BoolColumn) OR(other BoolColumn) BoolColumn {
+	for i, v := range c.contents {
+		c.contents[i] = v || other.contents[i]
+	}
+
+	return *c
+}
+
 // Returns all indices for which this column
 // has truthy values
 func (c *BoolColumn) TruthyIndices() []int {
