@@ -1,0 +1,12 @@
+BenchmarkUint32More-4                                100          16320800 ns/op         262208 B/op          4 allocs/op
+BenchmarkUint32Less-4                                100          15615659 ns/op         131104 B/op          2 allocs/op
+BenchmarkUint32Delta-4                               100          15973511 ns/op       22995204 B/op         39 allocs/op
+BenchmarkUint32Sum-4                                2000            743859 ns/op              0 B/op          0 allocs/op
+BenchmarkBoolAND-4                                 50000             31699 ns/op              0 B/op          0 allocs/op
+BenchmarkSelectAllMoreThanDollar-4                   100          16020921 ns/op         262208 B/op          4 allocs/op
+BenchmarkFiniteString32Within-4                       50          25190530 ns/op         262241 B/op          6 allocs/op
+BenchmarkSelectAllMoreThanDollarMaterial-4            20          74621560 ns/op       47334222 B/op         45 allocs/op
+BenchmarkSelectAllMoreDollarLessTen-4                 50          30496544 ns/op         393313 B/op          6 allocs/op
+BenchmarkSelectAllMoreDollarLessTenMaterial-4         20          76079955 ns/op       37299048 B/op         45 allocs/op
+BenchmarkSelectAfterTimeWiseMidPoint-4               100          17992860 ns/op         131104 B/op          2 allocs/op
+BenchmarkLatestPriceMaterial-4                        50          25104048 ns/op         266057 B/op         17 allocs/op
