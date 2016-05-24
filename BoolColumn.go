@@ -1,26 +1,37 @@
 package main
 
+import "github.com/willf/bitset"
+
 // A typically temporary column efficiently
 // storing boolean values
 type BoolColumn struct {
-	contents []bool
+
+	// Third party package feature stupid fast speeds
+	contents *bitset.BitSet
+
+	end uint
 }
 
 func NewBoolColumn() BoolColumn {
 	return BoolColumn{
-		contents: make([]bool, 0),
+		contents: bitset.New(1000000),
+		end:      0,
 	}
 }
 
 func (c *BoolColumn) Push(values []bool) {
-	c.contents = append(c.contents, values...)
+
+	start := c.end
+	for i, v := range values {
+		c.contents.SetTo(start+uint(i), v)
+	}
+
+	c.end += uint(len(values))
 }
 
 // Negate every value of the column and return it
 func (c *BoolColumn) Not() BoolColumn {
-	for i, v := range c.contents {
-		c.contents[i] = !v
-	}
+	c.contents = c.contents.Complement()
 
 	return *c
 }
@@ -29,9 +40,8 @@ func (c *BoolColumn) Not() BoolColumn {
 // that is assumed to be of equal length and organization
 // and overwrite this column
 func (c *BoolColumn) AND(other BoolColumn) BoolColumn {
-	for i, v := range c.contents {
-		c.contents[i] = v && other.contents[i]
-	}
+
+	c.contents.InPlaceIntersection(other.contents)
 
 	return *c
 }
@@ -40,9 +50,8 @@ func (c *BoolColumn) AND(other BoolColumn) BoolColumn {
 // that is assumed to be of equal length and organization
 // and overwrite this column
 func (c *BoolColumn) OR(other BoolColumn) BoolColumn {
-	for i, v := range c.contents {
-		c.contents[i] = v || other.contents[i]
-	}
+
+	c.contents.InPlaceUnion(other.contents)
 
 	return *c
 }
@@ -52,10 +61,12 @@ func (c *BoolColumn) OR(other BoolColumn) BoolColumn {
 func (c *BoolColumn) TruthyIndices() []int {
 
 	indices := make([]int, 0)
-	for i, v := range c.contents {
-		if v {
-			indices = append(indices, i)
-		}
+
+	// Shorthand, save some horizontal space
+	set := c.contents
+
+	for i, found := set.NextSet(0); found; i, found = set.NextSet(i + 1) {
+		indices = append(indices, int(i))
 	}
 
 	return indices
