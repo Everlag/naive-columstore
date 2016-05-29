@@ -336,3 +336,54 @@ func TestLatestPrice(t *testing.T) {
 	}
 
 }
+
+// Select the highest, latest price for a card-set combination
+//
+// We perform a lot of naive work on materialized tuples,
+// hopefully projections can let us avoid that in the future.
+//
+// Postgres equivalent
+// SELECT * FROM prices.mtgprice
+// 	WHERE name='Windswept Heath' ORDER BY time DESC, price DESC LIMIT 1;
+func TestLatestHighestPrice(t *testing.T) {
+
+	testTupleTime, err := time.Parse("2006-01-02 15:04:05",
+		"2016-04-09 03:51:45")
+	if err != nil {
+		t.Fatalf("failed to parse time, %v", err)
+	}
+
+	testTuple := PriceTuple{
+		Name:  "Windswept Heath",
+		Set:   "Onslaught Foil",
+		Price: 15499,
+		Time:  testTupleTime,
+	}
+
+	db := setupPriceTest(t)
+
+	nameEq := db.Names.Equal(testTuple.Name)
+	innerBound := nameEq
+
+	tuples := db.MaterializeTimeSortAsc(innerBound)
+	// We only want one but have no way of ensuring we only
+	// get one, so we have to handle that
+	if len(tuples) < 1 {
+		t.Fatalf("found fewer than two tuples")
+	}
+
+	// Select last tuples and find the last with lowest time
+	var found PriceTuple
+	for i := len(tuples) - 1; i >= 0; i-- {
+		t := tuples[i]
+		if found.Time.Before(t.Time) || found.Time.Equal(t.Time) {
+			if t.Price > found.Price || found.Time.Before(t.Time) {
+				found = t
+			}
+		}
+	}
+
+	if found != testTuple {
+		t.Fatalf("found tuple not equal to expected result, got %v", found)
+	}
+}

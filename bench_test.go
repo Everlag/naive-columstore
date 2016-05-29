@@ -239,3 +239,50 @@ func BenchmarkLatestPriceMaterial(b *testing.B) {
 	}
 
 }
+
+// Select the latest, highest price for a card
+//
+// This requires materialization as sort is currently
+// only implemented on tuples rather than on columns.
+func BenchmarLatestHighestPriceMaterial(b *testing.B) {
+
+	testTupleTime, err := time.Parse("2006-01-02 15:04:05",
+		"2016-04-09 03:51:45")
+	if err != nil {
+		b.Fatalf("failed to parse time, %v", err)
+	}
+
+	testTuple := PriceTuple{
+		Name:  "Windswept Heath",
+		Set:   "Onslaught Foil",
+		Price: 15499,
+		Time:  testTupleTime,
+	}
+
+	db := setupPriceBenchmark(b)
+
+	for n := 0; n < b.N; n++ {
+		nameEq := db.Names.Equal(testTuple.Name)
+		innerBound := nameEq
+
+		tuples := db.MaterializeTimeSortAsc(innerBound)
+		// We only want one but have no way of ensuring we only
+		// get one, so we have to handle that
+		if len(tuples) < 1 {
+			b.Fatalf("found fewer than two tuples")
+		}
+
+		// Select last tuples and find the last with lowest time
+		var found PriceTuple
+		for i := len(tuples) - 1; i >= 0; i-- {
+			t := tuples[i]
+			if found.Time.Before(t.Time) || found.Time.Equal(t.Time) {
+				if t.Price > found.Price || found.Time.Before(t.Time) {
+					found = t
+				}
+			}
+		}
+
+		uselessTuples = []PriceTuple{found}
+	}
+}
