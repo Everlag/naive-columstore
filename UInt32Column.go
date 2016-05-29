@@ -23,6 +23,11 @@ func (c *UInt32Column) Access(index int) uint32 {
 	return c.contents[index]
 }
 
+// Determine the length of this column
+func (c *UInt32Column) Length() int {
+	return len(c.contents)
+}
+
 // Determine the difference between a provided value
 // and each value in the column as {column} - {value}
 func (c *UInt32Column) Delta(value uint32) UInt32Column {
