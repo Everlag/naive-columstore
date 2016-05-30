@@ -74,38 +74,6 @@ func (c *RLEUInt32Column) Sum() uint64 {
 	return result
 }
 
-// Determine all values less than a provided value
-// and return them positionally as a BoolColumn
-func (c *RLEUInt32Column) Less(value uint32) BoolColumn {
-
-	results := NewBoolColumn()
-	VecStepAfter := func(start, end int, rleVal step.Equaler) {
-		fill := false
-
-		v := uint32(rleVal.(RLEUint32))
-		if v < value {
-			fill = true
-		}
-
-		intermediate := make([]bool, end-start)
-		for i := 0; i < len(intermediate); i++ {
-			intermediate[i] = fill
-		}
-
-		results.Push(intermediate)
-	}
-	c.contents.Do(VecStepAfter)
-
-	return results
-}
-
-// Determine all values less than a provided value
-// and return them positionally as a BoolColumn
-func (c *RLEUInt32Column) More(value uint32) BoolColumn {
-	less := c.Less(value)
-	return less.Not()
-}
-
 // Determine all values equal a provided value
 // and return them positionally as a BoolColumn
 func (c *RLEUInt32Column) Equal(value uint32) BoolColumn {
