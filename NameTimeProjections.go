@@ -8,7 +8,7 @@ import (
 // Define a projection sorted first by name
 // then by time
 type NameTimeProjection struct {
-	Names FiniteString32Column
+	Names RLEFiniteString32Column
 	Sets  FiniteString32Column
 
 	Prices UInt32Column
@@ -22,7 +22,7 @@ type NameTimeProjection struct {
 // I'm not handling updates so this is fine... in theory.
 func NameTimeProjectionFromPriceDB(db PriceDB) NameTimeProjection {
 	proj := NameTimeProjection{
-		Names:  NewFiniteString32Column(),
+		Names:  NewRLEFiniteString32Column(),
 		Sets:   NewFiniteString32Column(),
 		Prices: NewUInt32Column(),
 		Times:  NewTimeColumn(),
