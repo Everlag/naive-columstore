@@ -16,11 +16,12 @@ func setupNameTimeProjectionTest(t *testing.T) NameTimeProjection {
 
 	// Make sure the underlying db was created first
 	db := setupPriceTest(t)
-	proj := NameTimeProjectionFromPriceDB(db)
+	if TestNameTimeProjection == nil {
+		proj := NameTimeProjectionFromPriceDB(db)
+		TestNameTimeProjection = &proj
+	}
 
-	TestNameTimeProjection = &proj
-
-	return proj
+	return *TestNameTimeProjection
 }
 
 // Create a projection out of the fully formed db
@@ -70,6 +71,25 @@ func TestNameTimeProjectionFromPriceDB(t *testing.T) {
 
 		prevName = name
 		prevTime = time
+	}
+
+}
+
+// Find the number of tuples for a certain card's latest value
+//
+// Postgres equivalent(result # only, not performance equiv)
+// SELECT * FROM prices.mtgprice
+// 	WHERE name='Windswept Heath' AND
+// 	      time = timestamp '2016-04-09 03:51:45'  ORDER BY time DESC, price DESC;
+func TestNameTimeProjectionLatest(t *testing.T) {
+
+	proj := setupNameTimeProjectionTest(t)
+
+	referenceCount := 6
+	query := proj.Latest("Windswept Heath")
+	count := len(query.TruthyIndices())
+	if referenceCount != referenceCount {
+		t.Fatalf("mismatching coubt %v != %v", referenceCount, count)
 	}
 
 }
