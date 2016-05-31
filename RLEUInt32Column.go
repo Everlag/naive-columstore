@@ -79,19 +79,16 @@ func (c *RLEUInt32Column) Sum() uint64 {
 func (c *RLEUInt32Column) Equal(value uint32) BoolColumn {
 	results := NewBoolColumn()
 	VecStepAfter := func(start, end int, rleVal step.Equaler) {
-		fill := false
+
+		length := end - start
 
 		v := uint32(rleVal.(RLEUint32))
 		if v == value {
-			fill = true
+			results.PushTrue(length)
+		} else {
+			results.PushFalse(length)
 		}
 
-		intermediate := make([]bool, end-start)
-		for i := 0; i < len(intermediate); i++ {
-			intermediate[i] = fill
-		}
-
-		results.Push(intermediate)
 	}
 	c.contents.Do(VecStepAfter)
 

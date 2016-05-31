@@ -29,6 +29,30 @@ func (c *BoolColumn) Push(values []bool) {
 	c.end += uint(len(values))
 }
 
+// Push a length of true booleans onto the column
+//
+// Useful for unpacking compressed runs.
+func (c *BoolColumn) PushTrue(length int) {
+
+	start := c.end
+	for i := 0; i < length; i++ {
+		c.contents.Set(start + uint(i))
+	}
+	c.end += uint(length)
+}
+
+// Push a length of false booleans onto the column
+//
+// Useful for unpacking compressed runs.
+func (c *BoolColumn) PushFalse(length int) {
+
+	start := c.end
+	for i := 0; i < length; i++ {
+		c.contents.Clear(start + uint(i))
+	}
+	c.end += uint(length)
+}
+
 // Negate every value of the column and return it
 func (c *BoolColumn) Not() BoolColumn {
 	c.contents = c.contents.Complement()
