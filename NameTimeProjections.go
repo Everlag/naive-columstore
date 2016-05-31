@@ -134,7 +134,9 @@ func (proj *NameTimeProjection) Latest(name string) BoolColumn {
 	// be perform an After easily
 	latestTime := proj.Times.Access(lastIndex).Add(-time.Minute)
 
-	return query.AND(proj.Times.After(latestTime))
+	proj.Times.ANDAfter(latestTime, query)
+
+	return query
 }
 
 type NameTimeOrderedTuples []PriceTuple

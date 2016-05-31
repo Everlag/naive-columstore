@@ -80,6 +80,16 @@ func (c *BoolColumn) OR(other BoolColumn) BoolColumn {
 	return *c
 }
 
+// Clear a single value of this column
+//
+// Typical usage is to perform an in-place AND
+func (c *BoolColumn) Clear(pos int) BoolColumn {
+
+	c.contents.Clear(uint(pos))
+
+	return *c
+}
+
 // Returns all indices for which this column
 // has truthy values
 func (c *BoolColumn) TruthyIndices() []int {

@@ -37,3 +37,16 @@ func (c *TimeColumn) After(when time.Time) BoolColumn {
 
 	return results
 }
+
+// Determine all times happening after a certain point
+// and clear those not before that time
+//
+// This lets us operate inplace on an existing BoolColumn, saving
+// allocations
+func (c *TimeColumn) ANDAfter(when time.Time, results BoolColumn) {
+	for i, v := range c.contents {
+		if !v.After(when) {
+			results.Clear(i)
+		}
+	}
+}
