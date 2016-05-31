@@ -26,12 +26,12 @@ func TestRLEUInt32Equal(t *testing.T) {
 	query := col.Equal(2)
 	computed := query.TruthyIndices()
 	if len(reference) != len(computed) {
-		t.Fatalf("more has unexpected result '%v'", computed)
+		t.Fatalf("equal has unexpected result '%v'", computed)
 	}
 
 	for i, refIndex := range reference {
 		if computed[i] != refIndex {
-			t.Fatalf("more has unexpected result '%v'", computed)
+			t.Fatalf("equal has unexpected result '%v'", computed)
 		}
 	}
 
