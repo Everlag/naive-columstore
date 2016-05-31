@@ -272,6 +272,7 @@ func BenchmarkLatestHighestPriceMaterial(b *testing.B) {
 	}
 
 	proj := setupNameTimeProjectionBench(b)
+	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
 		query := proj.Latest(testTuple.Name)
@@ -311,6 +312,7 @@ func BenchmarkLatestHighestPriceMaterialOld(b *testing.B) {
 	}
 
 	db := setupPriceBenchmark(b)
+	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
 		nameEq := db.Names.Equal(testTuple.Name)
