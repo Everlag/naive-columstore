@@ -360,26 +360,22 @@ func TestLatestHighestPrice(t *testing.T) {
 		Time:  testTupleTime,
 	}
 
-	db := setupPriceTest(t)
+	proj := setupNameTimeProjectionTest(t)
 
-	nameEq := db.Names.Equal(testTuple.Name)
-	innerBound := nameEq
+	query := proj.Latest(testTuple.Name)
 
-	tuples := db.MaterializeTimeSortAsc(innerBound)
+	tuples := proj.MaterializeFromBools(query)
 	// We only want one but have no way of ensuring we only
 	// get one, so we have to handle that
 	if len(tuples) < 1 {
 		t.Fatalf("found fewer than two tuples")
 	}
 
-	// Select last tuples and find the last with lowest time
+	// Select tuple with highest price
 	var found PriceTuple
-	for i := len(tuples) - 1; i >= 0; i-- {
-		t := tuples[i]
-		if found.Time.Before(t.Time) || found.Time.Equal(t.Time) {
-			if t.Price > found.Price || found.Time.Before(t.Time) {
-				found = t
-			}
+	for _, t := range tuples {
+		if t.Price > found.Price {
+			found = t
 		}
 	}
 

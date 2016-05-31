@@ -14,6 +14,7 @@ var garbageQuery BoolColumn
 var trashUint64 uint64
 
 var BenchDB *PriceDB
+var BenchNameTimeProjection *NameTimeProjection
 
 func setupPriceBenchmark(b *testing.B) PriceDB {
 	if BenchDB != nil {
@@ -28,6 +29,17 @@ func setupPriceBenchmark(b *testing.B) PriceDB {
 
 	b.ReportAllocs()
 	return db
+}
+
+func setupNameTimeProjectionBench(b *testing.B) NameTimeProjection {
+	// Make sure the underlying db was created first
+	db := setupPriceBenchmark(b)
+	if BenchNameTimeProjection == nil {
+		proj := NameTimeProjectionFromPriceDB(db)
+		BenchNameTimeProjection = &proj
+	}
+
+	return *BenchNameTimeProjection
 }
 
 func BenchmarkUint32More(b *testing.B) {
@@ -244,7 +256,46 @@ func BenchmarkLatestPriceMaterial(b *testing.B) {
 //
 // This requires materialization as sort is currently
 // only implemented on tuples rather than on columns.
-func BenchmarLatestHighestPriceMaterial(b *testing.B) {
+func BenchmarkLatestHighestPriceMaterial(b *testing.B) {
+
+	testTupleTime, err := time.Parse("2006-01-02 15:04:05",
+		"2016-04-09 03:51:45")
+	if err != nil {
+		b.Fatalf("failed to parse time, %v", err)
+	}
+
+	testTuple := PriceTuple{
+		Name:  "Windswept Heath",
+		Set:   "Onslaught Foil",
+		Price: 15499,
+		Time:  testTupleTime,
+	}
+
+	proj := setupNameTimeProjectionBench(b)
+
+	for n := 0; n < b.N; n++ {
+		query := proj.Latest(testTuple.Name)
+
+		tuples := proj.MaterializeFromBools(query)
+		// We only want one but have no way of ensuring we only
+		// get one, so we have to handle that
+		if len(tuples) < 1 {
+			b.Fatalf("found fewer than two tuples")
+		}
+
+		// Select tuple with highest price
+		var found PriceTuple
+		for _, t := range tuples {
+			if t.Price > found.Price {
+				found = t
+			}
+		}
+
+		uselessTuples = []PriceTuple{found}
+	}
+}
+
+func BenchmarkLatestHighestPriceMaterialOld(b *testing.B) {
 
 	testTupleTime, err := time.Parse("2006-01-02 15:04:05",
 		"2016-04-09 03:51:45")
